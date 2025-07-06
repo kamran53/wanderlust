@@ -1,0 +1,200 @@
+<div class="row">
+  <div class="col-12">
+    <nav aria-label="breadcrumb" class="mb-3">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/">My Projects</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Order New Project</li>
+      </ol>
+    </nav>
+    
+    <h1 class="mb-4">Order New Project</h1>
+
+    <% if @project.errors.any? || (@service_errors && @service_errors.any?) %>
+      <div class="alert alert-danger">
+        <ul class="mb-0">
+          <% @project.errors.full_messages.each do |msg| %>
+            <li><%= msg %></li>
+          <% end %>
+          <% if @service_errors %>
+            <% @service_errors.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%= form_with model: @project, url: create_order_projects_path, local: true, id: "order-form" do |form| %>
+      <div class="row">
+        <!-- Project Details -->
+        <div class="col-lg-4 mb-4">
+          <div class="card">
+            <div class="card-header">
+              <h5 class="card-title mb-0">Project Details</h5>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <%= form.label :name, "Project Name", class: "form-label" %>
+                <%= form.text_field :name, class: "form-control #{'is-invalid' if @project.errors[:name].any?}", required: true, placeholder: "Enter your project name" %>
+                <div class="validation-status" id="name-validation">Project name is required</div>
+                <% if @project.errors[:name].any? %>
+                  <div class="invalid-feedback">
+                    <%= @project.errors[:name].join(', ') %>
+                  </div>
+                <% end %>
+              </div>
+              
+              <div class="mb-3">
+                <%= form.label :raw_footage_link, "Raw Footage Link", class: "form-label" %>
+                <%= form.url_field :raw_footage_link, class: "form-control #{'is-invalid' if @project.errors[:raw_footage_link].any?}", 
+                                  placeholder: "https://drive.google.com/...", required: true %>
+                <div class="validation-status" id="link-validation">Raw footage link is required</div>
+                <% if @project.errors[:raw_footage_link].any? %>
+                  <div class="invalid-feedback">
+                    <%= @project.errors[:raw_footage_link].join(', ') %>
+                  </div>
+                <% end %>
+                <div class="form-text">Please provide a link to your raw footage (Google Drive, Dropbox, etc.)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Video Selection -->
+        <div class="col-lg-8">
+          <%= render 'video_types_grid' %>
+        </div>
+      </div>
+      
+      <div class="row mt-4">
+        <div class="col-12 text-center">
+          <button type="button" class="btn btn-success btn-lg" id="pay-button" disabled>
+            Pay $<span id="pay-button-price">0.00</span>
+          </button>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%= render 'payment_modal' %>
+
+<%= render 'video_types_grid_js' %>
+
+<script>
+// Simple, robust JavaScript for order project page
+function initializeOrderPage() {
+  console.log('Initializing order project page...');
+  
+  // Get all required elements
+  const checkboxes = document.querySelectorAll('.video-type-checkbox');
+  const selectedCount = document.getElementById('selected-count');
+  const totalPrice = document.getElementById('total-price');
+  const payButton = document.getElementById('pay-button');
+  const payButtonPrice = document.getElementById('pay-button-price');
+  const orderForm = document.getElementById('order-form');
+  
+  console.log('Found checkboxes:', checkboxes.length);
+  console.log('Pay button:', payButton);
+  
+  function updateTotals() {
+    let count = 0;
+    let total = 0;
+    
+    checkboxes.forEach(checkbox => {
+      const card = checkbox.closest('.video-type-card');
+      if (checkbox.checked) {
+        count++;
+        total += parseInt(card.dataset.price);
+        card.classList.add('selected');
+      } else {
+        card.classList.remove('selected');
+      }
+    });
+    
+    console.log('Update totals - count:', count, 'total:', total);
+    
+    if (selectedCount) selectedCount.textContent = count;
+    const totalDollars = (total / 100).toFixed(2);
+    if (totalPrice) totalPrice.textContent = totalDollars;
+    if (payButtonPrice) payButtonPrice.textContent = totalDollars;
+    
+    // Check if all required fields are filled
+    const projectName = document.querySelector('input[name="project[name]"]').value.trim();
+    const rawFootageLink = document.querySelector('input[name="project[raw_footage_link]"]').value.trim();
+    const hasVideoTypes = count > 0;
+    const hasProjectName = projectName.length > 0;
+    const hasRawFootageLink = rawFootageLink.length > 0;
+    
+    const allFieldsValid = hasVideoTypes && hasProjectName && hasRawFootageLink;
+    
+    // Update debug validation info
+    if (document.getElementById('debug-validation')) {
+      document.getElementById('debug-validation').textContent = 
+        `Validation: Videos(${hasVideoTypes ? '✓' : '✗'}) Name(${hasProjectName ? '✓' : '✗'}) Link(${hasRawFootageLink ? '✓' : '✗'}) All(${allFieldsValid ? '✓' : '✗'})`;
+    }
+    
+    // Update field validation messages
+    const nameValidation = document.getElementById('name-validation');
+    const linkValidation = document.getElementById('link-validation');
+    
+    if (nameValidation) {
+      nameValidation.textContent = hasProjectName ? '✓ Project name is valid' : '✗ Project name is required';
+      nameValidation.className = `validation-status ${hasProjectName ? 'valid' : 'invalid'}`;
+    }
+    
+    if (linkValidation) {
+      linkValidation.textContent = hasRawFootageLink ? '✓ Raw footage link is valid' : '✗ Raw footage link is required';
+      linkValidation.className = `validation-status ${hasRawFootageLink ? 'valid' : 'invalid'}`;
+    }
+    
+    if (payButton) {
+      payButton.disabled = !allFieldsValid;
+      console.log('Pay button validation:', {
+        hasVideoTypes,
+        hasProjectName,
+        hasRawFootageLink,
+        allFieldsValid,
+        disabled: payButton.disabled
+      });
+    }
+  }
+  
+  // Add event listeners to checkboxes
+  checkboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      console.log('Checkbox changed:', this.checked);
+      updateTotals();
+    });
+  });
+  
+  // Add event listeners to form fields
+  const projectNameField = document.querySelector('input[name="project[name]"]');
+  const rawFootageLinkField = document.querySelector('input[name="project[raw_footage_link]"]');
+  
+  if (projectNameField) {
+    projectNameField.addEventListener('input', function() {
+      console.log('Project name changed:', this.value);
+      updateTotals();
+    });
+  }
+  
+  if (rawFootageLinkField) {
+    rawFootageLinkField.addEventListener('input', function() {
+      console.log('Raw footage link changed:', this.value);
+      updateTotals();
+    });
+  }
+  
+  // Initialize totals
+  updateTotals();
+  console.log('Order project page initialized');
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeOrderPage);
+} else {
+  initializeOrderPage();
+}
+</script>

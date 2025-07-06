@@ -1,0 +1,118 @@
+<script>
+// Simple, robust JS for order project page (video types grid)
+function initializeVideoTypesGrid() {
+  const checkboxes = document.querySelectorAll('.video-type-checkbox');
+  const selectedCount = document.getElementById('selected-count');
+  const totalPrice = document.getElementById('total-price');
+  const payButton = document.getElementById('pay-button');
+  const payButtonPrice = document.getElementById('pay-button-price');
+  const modalTotalPrice = document.getElementById('modal-total-price');
+  const paymentModalEl = document.getElementById('paymentModal');
+  let paymentModal;
+  if (window.bootstrap && paymentModalEl) {
+    paymentModal = new bootstrap.Modal(paymentModalEl);
+  }
+
+  // Payment modal fields
+  const cardNumberField = paymentModalEl ? paymentModalEl.querySelector('input[placeholder="1234 5678 9012 3456"]') : null;
+  const expiryField = paymentModalEl ? paymentModalEl.querySelector('input[placeholder="MM/YY"]') : null;
+  const cvvField = paymentModalEl ? paymentModalEl.querySelector('input[placeholder="123"]') : null;
+  const nameField = paymentModalEl ? paymentModalEl.querySelector('input[placeholder="John Doe"]') : null;
+  const confirmPaymentBtn = paymentModalEl ? paymentModalEl.querySelector('#confirm-payment') : null;
+  const orderForm = document.getElementById('order-form');
+
+  function validateCardNumber(value) {
+    // Simple Luhn check for 16 digits
+    return /^\d{16}$/.test(value.replace(/\s+/g, ''));
+  }
+  function validateExpiry(value) {
+    // MM/YY, simple check
+    return /^(0[1-9]|1[0-2])\/(\d{2})$/.test(value);
+  }
+  function validateCVV(value) {
+    return /^\d{3,4}$/.test(value);
+  }
+  function validateName(value) {
+    return value.trim().length > 0;
+  }
+
+  function updateConfirmPaymentState() {
+    if (!confirmPaymentBtn) return;
+    const cardValid = cardNumberField && validateCardNumber(cardNumberField.value);
+    const expiryValid = expiryField && validateExpiry(expiryField.value);
+    const cvvValid = cvvField && validateCVV(cvvField.value);
+    const nameValid = nameField && validateName(nameField.value);
+    confirmPaymentBtn.disabled = !(cardValid && expiryValid && cvvValid && nameValid);
+  }
+
+  if (cardNumberField) cardNumberField.addEventListener('input', updateConfirmPaymentState);
+  if (expiryField) expiryField.addEventListener('input', updateConfirmPaymentState);
+  if (cvvField) cvvField.addEventListener('input', updateConfirmPaymentState);
+  if (nameField) nameField.addEventListener('input', updateConfirmPaymentState);
+
+  // Show modal on pay button click
+  if (payButton && paymentModal) {
+    payButton.addEventListener('click', function() {
+      paymentModal.show();
+      updateConfirmPaymentState();
+    });
+  }
+
+  // Confirm payment button click
+  if (confirmPaymentBtn) {
+    confirmPaymentBtn.addEventListener('click', function() {
+      updateConfirmPaymentState();
+      if (!confirmPaymentBtn.disabled) {
+        if (paymentModal) paymentModal.hide();
+        if (orderForm) orderForm.submit();
+      } else {
+        // Optionally, show error feedback
+        [cardNumberField, expiryField, cvvField, nameField].forEach(function(field) {
+          if (field && !field.value) field.classList.add('is-invalid');
+        });
+      }
+    });
+  }
+
+  function updateTotals() {
+    let count = 0;
+    let total = 0;
+    checkboxes.forEach(checkbox => {
+      const card = checkbox.closest('.video-type-card');
+      if (checkbox.checked) {
+        count++;
+        total += parseInt(card.dataset.price);
+        card.classList.add('selected');
+      } else {
+        card.classList.remove('selected');
+      }
+    });
+    if (selectedCount) selectedCount.textContent = count;
+    const totalDollars = (total / 100).toFixed(2);
+    if (totalPrice) totalPrice.textContent = totalDollars;
+    if (payButtonPrice) payButtonPrice.textContent = totalDollars;
+    if (modalTotalPrice) modalTotalPrice.textContent = totalDollars;
+    // Check if all required fields are filled
+    const projectName = document.querySelector('input[name="project[name]"]').value.trim();
+    const rawFootageLink = document.querySelector('input[name="project[raw_footage_link]"]').value.trim();
+    const hasVideoTypes = count > 0;
+    const hasProjectName = projectName.length > 0;
+    const hasRawFootageLink = rawFootageLink.length > 0;
+    const allFieldsValid = hasVideoTypes && hasProjectName && hasRawFootageLink;
+    if (payButton) payButton.disabled = !allFieldsValid;
+  }
+  checkboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', updateTotals);
+  });
+  const projectNameField = document.querySelector('input[name="project[name]"]');
+  const rawFootageLinkField = document.querySelector('input[name="project[raw_footage_link]"]');
+  if (projectNameField) projectNameField.addEventListener('input', updateTotals);
+  if (rawFootageLinkField) rawFootageLinkField.addEventListener('input', updateTotals);
+  updateTotals();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeVideoTypesGrid);
+} else {
+  initializeVideoTypesGrid();
+}
+</script>

@@ -1,0 +1,36 @@
+<div class="card">
+  <div class="card-header">
+    <h5 class="card-title mb-0">Select Video Types</h5>
+  </div>
+  <div class="card-body">
+    <div class="row" id="video-types-grid">
+      <% @video_types.each do |video_type| %>
+        <div class="col-md-6 mb-3">
+          <div class="card video-type-card" data-video-type-id="<%= video_type.id %>" data-price="<%= video_type.price %>">
+            <div class="card-body">
+              <div class="form-check">
+                <%= check_box_tag "project[video_type_ids][]", video_type.id, false, 
+                    class: "form-check-input video-type-checkbox", 
+                    id: "video_type_#{video_type.id}" %>
+                <label class="form-check-label" for="video_type_<%= video_type.id %>">
+                  <h6 class="card-title"><%= video_type.name %></h6>
+                  <p class="card-text text-muted"><%= video_type.description %></p>
+                  <p class="card-text">
+                    <strong class="text-primary">$<%= number_with_precision(video_type.price / 100.0, precision: 2) %></strong>
+                  </p>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    <div class="mt-3">
+      <div class="alert alert-info">
+        <strong>Selected Videos:</strong> <span id="selected-count">0</span>
+        <br>
+        <strong>Total Price:</strong> $<span id="total-price">0.00</span>
+      </div>
+    </div>
+  </div>
+</div>
